@@ -103,6 +103,23 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 	// NOTE: this method will NOT be called by the grading code. But you will probably find it useful to 
 	//   implement this method and use it as a helper during the updateWeights phase.
 
+	double closest;
+	int id_closest;
+	for( int i=0 ; i<observations; i ++){
+
+		closest = 0.0;
+		for ( int j=0; j < predicted.size();j++){
+
+			distance = dist(observations[i].x, observations[i].y, predicted[j].x,predicted[j].y); 
+
+			if (distance < closest){
+				closest = distance;
+				id_closest = 
+			}
+		}
+		associations.push_back(id_closest);
+	}
+
 }
 
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[], 
@@ -117,6 +134,38 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   and the following is a good resource for the actual equation to implement (look at equation 
 	//   3.33
 	//   http://planning.cs.uiuc.edu/node99.html
+	
+
+	/* Beginning of the coordinate transformation which does rotation and translation via */
+	/* this gets us from particle coordinates to car's map coordinates 
+	    __								__	__ _
+	xm	|cos(theta)		-sin(theta)		xp| |xc |
+	ym	|sin(theta)		cos(theta)		yp| |yc |
+	1	|1				1				1 |	|1  |
+		--								--- -- --
+	*/	
+	/* End of the coordinate transformation */
+
+	/* Gauss Norm for weight update*/
+	double sig_x, sig_y, x_obs, y_obs, mu_x, mu_y, gauss_norm, exponent;
+	
+	/*
+	sig_x= 0.3
+	sig_y= 0.3
+	x_obs= 6
+	y_obs= 3
+	mu_x= 5
+	mu_y= 3
+	*/
+
+	// calculate normalization term
+	gauss_norm= (1./(2. * 3.141592653 * sig_x * sig_y));
+
+	// calculate exponent
+	exponent= ( pow((x_obs - mu_x),2 ) )/(2. * pow(sig_x,2) ) + (pow((y_obs - mu_y),2 )/(2. * pow(sig_y,2)));
+
+	// calculate weight using normalization terms and exponent
+	weight= gauss_norm * exp(-1 * exponent);
 }
 
 void ParticleFilter::resample() {
