@@ -17,6 +17,7 @@
 
 #include "particle_filter.h"
 
+#define EPSILON .001
 using namespace std;
 
 void ParticleFilter::init(double x, double y, double theta, double std[]) {
@@ -24,13 +25,13 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	//   x, y, theta and their uncertainties from GPS) and all weights to 1. 
 	// Add random Gaussian noise to each particle.
 	// NOTE: Consult particle_filter.h for more information about this method (and others in this file).
-	num_particles = 1000;
+	num_particles = 100;
 	
 	double std_x, std_y, std_theta; // Standard deviations for x, y, and theta
 	// TODO: Set standard deviations for x, y, and theta
-	 std_x = std[0];
-	 std_y = std[1];
-	 std_theta = std[2];
+	std_x = std[0];
+	std_y = std[1];
+	std_theta = std[2];
 
 	normal_distribution<double> dist_x(x, std_x);
 	normal_distribution<double> dist_y(y, std_y);
@@ -54,6 +55,20 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 		particles.push_back( p );
 	}
 
+	/* This tests init when running on the sim, checks if particles were initialized
+	for(int i=0; i < num_particles;i++)
+	{
+		
+		cout<< i << "\t" << particles[i].id << endl;
+		cout<< i << "\t" << particles[i].x << endl;
+		cout<< i << "\t" << particles[i].y << endl;
+		cout<< i << "\t" << particles[i].theta << endl;
+		
+	}
+	 string frog;
+	 cout<< "Got to the frog line\n";
+	 cin >> frog;
+	 */
 }
 
 void ParticleFilter::prediction(double delta_t, double std_pos[], double velocity, double yaw_rate) {
@@ -75,20 +90,36 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	std_theta = std_pos[2];	
 	default_random_engine gen;
 
+	normal_distribution <double> dist_velocity(velocity, std_vel);
+	normal_distribution <double> dist_yawd(yaw_rate, std_yaw);	
+	
 	for(int i=0; i < num_particles; i++)
 	{
-		v_over_theta = (velocity / yaw_rate);
+		//add noise to velocity and yaw_rate
+		velocity = 
+		yaw_rate =
+
+		double x = particles[i].x;
+		double y = particles[i].y;
+		theta_0  = particles[i].theta;
+
+
 		d_theta_dt   = yaw_rate * delta_t;
-		theta_0      = particles[i].theta;
+		v_over_theta = (velocity / yaw_rate);
 
-		particles[i].x     = particles[i].x + v_over_theta * (sin(theta_0 + d_theta_dt) - sin( theta_0 )); 
-		particles[i].y     = particles[i].y + v_over_theta * (cos(theta_0 )             - cos( theta_0 + d_theta_dt )); 
-		particles[i].theta = particles[i].theta + v_over_theta;
+		if ( theta_0 < EPSILON)
+		{
+
+		} else{
+
+		xf     = x + v_over_theta * (sin(theta_0 + d_theta_dt) - sin( theta_0 )); 
+		yf     = y + v_over_theta * (cos(theta_0 )             - cos( theta_0 + d_theta_dt )); 
+		thetaf = theta_0 + v_over_theta;	
+		
+		}
 
 
-		normal_distribution <double> dist_x(particles[i].x, std_x);
-		normal_distribution <double> dist_y(particles[i].y, std_y);
-		normal_distribution <double> dist_theta(particles[i].theta, std_theta);
+		
 
 		particles[i].x     = dist_x(gen);
 		particles[i].y     = dist_y(gen);
@@ -103,22 +134,7 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 	// NOTE: this method will NOT be called by the grading code. But you will probably find it useful to 
 	//   implement this method and use it as a helper during the updateWeights phase.
 
-	double closest;
-	int id_closest;
-	for( int i=0 ; i<observations; i ++){
-
-		closest = 0.0;
-		for ( int j=0; j < predicted.size();j++){
-
-			distance = dist(observations[i].x, observations[i].y, predicted[j].x,predicted[j].y); 
-
-			if (distance < closest){
-				closest = distance;
-				id_closest = 
-			}
-		}
-		associations.push_back(id_closest);
-	}
+	
 
 }
 
@@ -165,7 +181,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	exponent= ( pow((x_obs - mu_x),2 ) )/(2. * pow(sig_x,2) ) + (pow((y_obs - mu_y),2 )/(2. * pow(sig_y,2)));
 
 	// calculate weight using normalization terms and exponent
-	weight= gauss_norm * exp(-1 * exponent);
+	double weight= gauss_norm * exp(-1 * exponent);
 }
 
 void ParticleFilter::resample() {
