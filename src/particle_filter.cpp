@@ -26,7 +26,8 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	// Add random Gaussian noise to each particle.
 	// NOTE: Consult particle_filter.h for more information about this method (and others in this file).
 	num_particles = 100;
-	
+	std_vel = 1.0; 
+	std_yaw = 1.0;
 	double std_x, std_y, std_theta; // Standard deviations for x, y, and theta
 	// TODO: Set standard deviations for x, y, and theta
 	std_x = std[0];
@@ -55,6 +56,8 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 		particles.push_back( p );
 	}
 
+	is_initialized = true;
+
 	/* This tests init when running on the sim, checks if particles were initialized
 	for(int i=0; i < num_particles;i++)
 	{
@@ -76,6 +79,19 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	// NOTE: When adding noise you may find std::normal_distribution and std::default_random_engine useful.
 	//  http://en.cppreference.com/w/cpp/numeric/random/normal_distribution
 	//  http://www.cplusplus.com/reference/random/default_random_engine/
+	
+	/*
+	cout<< "Pre-predict" << endl;
+	for(int i=0; i < 3;i++)
+	{
+		
+		cout<< i << "\t" << particles[i].id << endl;
+		cout<< i << "\t" << particles[i].x << endl;
+		cout<< i << "\t" << particles[i].y << endl;
+		cout<< i << "\t" << particles[i].theta << endl;
+		
+	}
+	*/
 
 	double v_over_theta;
 	double d_theta_dt;
@@ -96,36 +112,59 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	for(int i=0; i < num_particles; i++)
 	{
 		//add noise to velocity and yaw_rate
-		velocity = 
-		yaw_rate =
+		velocity = dist_velocity(gen); 
+		yaw_rate = dist_yawd(gen);
 
 		double x = particles[i].x;
 		double y = particles[i].y;
 		theta_0  = particles[i].theta;
+		
+		normal_distribution<double> dist_x(x, std_x);	
+		normal_distribution<double> dist_y(y, std_y);
+		normal_distribution<double> dist_theta(theta_0, std_theta);
 
-
-		d_theta_dt   = yaw_rate * delta_t;
-		v_over_theta = (velocity / yaw_rate);
-
-		if ( theta_0 < EPSILON)
+		x  		= dist_x(gen);
+		y 		= dist_y(gen);
+		theta_0 = dist_theta(gen);
+		
+		if ( theta_0 < EPSILON )
 		{
+			xf     = x + velocity * delta_t * cos(theta_0);
+			yf     = y + velocity * delta_t * sin(theta_0);
+			thetaf = theta_0;
 
 		} else{
 
-		xf     = x + v_over_theta * (sin(theta_0 + d_theta_dt) - sin( theta_0 )); 
-		yf     = y + v_over_theta * (cos(theta_0 )             - cos( theta_0 + d_theta_dt )); 
-		thetaf = theta_0 + v_over_theta;	
-		
+			d_theta_dt   = yaw_rate * delta_t;
+			v_over_theta = velocity / yaw_rate;
+
+			xf     = x + v_over_theta * (sin(theta_0 + d_theta_dt) - sin( theta_0 )); 
+			yf     = y + v_over_theta * (cos(theta_0 )             - cos( theta_0 + d_theta_dt )); 
+			thetaf = theta_0 + v_over_theta;
+
 		}
 
+		particles[i].x     = xf;
+		particles[i].y     = yf;
+		particles[i].theta = thetaf;
 
-		
-
-		particles[i].x     = dist_x(gen);
-		particles[i].y     = dist_y(gen);
-		particles[i].theta = dist_theta(gen); 
 	}
 
+	/*
+	cout<< "Post Predict" << endl;
+	for(int i=0; i < 3;i++)
+	{
+		
+		cout<< i << "\t" << particles[i].id << endl;
+		cout<< i << "\t" << particles[i].x << endl;
+		cout<< i << "\t" << particles[i].y << endl;
+		cout<< i << "\t" << particles[i].theta << endl;
+		
+	}
+	 string frog;
+	 cout<< "Got to the frog line\n";
+	 cin >> frog;
+	 */
 }
 
 void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations) {
