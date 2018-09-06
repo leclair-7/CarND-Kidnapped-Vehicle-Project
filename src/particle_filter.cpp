@@ -111,7 +111,7 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	
 	for(int i=0; i < num_particles; i++)
 	{
-		//add noise to velocity and yaw_rate
+		//add noise to velocity and yaw_rate, comment the next 2 lines down to make it noiseless
 		velocity = dist_velocity(gen); 
 		yaw_rate = dist_yawd(gen);
 
@@ -173,6 +173,34 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 	// NOTE: this method will NOT be called by the grading code. But you will probably find it useful to 
 	//   implement this method and use it as a helper during the updateWeights phase.
 
+
+	/*
+		Still don't know what exactly this association does, however, 
+			it does associate what the particle thinks it sees with what it observes,
+			if we do that with all particles, that would n^3 runtime.. baaad..
+	*/
+	double currdist;
+	int id_pred;
+	
+	for ( int i = 0; i < predicted.size(); i++){
+		double mindist = 999.0;
+		
+		for ( int j=0; j < observations.size(); j++){
+			currdist = dist(observations[j].x, observations[j].y, predicted[i].x, predicted[i].y);
+			if ( currdist < mindist){
+				mindist = currdist;
+				id_pred = i;
+			}
+		}
+
+		/*
+		//Notice the association made in the printline, may put that in some sort of map soon
+
+		cout<< "The closest to: " << predicted[i].id << " " << predicted[i].x << " " << predicted[i].y  << " is "
+								  << observations[id_pred].id << " " << observations[id_pred].x << " " << observations[id_pred].y << endl; 
+		*/
+
+	}
 	
 
 }
