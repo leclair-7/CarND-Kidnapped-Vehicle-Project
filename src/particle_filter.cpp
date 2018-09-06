@@ -173,7 +173,6 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 	// NOTE: this method will NOT be called by the grading code. But you will probably find it useful to 
 	//   implement this method and use it as a helper during the updateWeights phase.
 
-
 	/*
 		Still don't know what exactly this association does, however, 
 			it does associate what the particle thinks it sees with what it observes,
@@ -199,10 +198,7 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 		cout<< "The closest to: " << predicted[i].id << " " << predicted[i].x << " " << predicted[i].y  << " is "
 								  << observations[id_pred].id << " " << observations[id_pred].x << " " << observations[id_pred].y << endl; 
 		*/
-
 	}
-	
-
 }
 
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[], 
@@ -217,7 +213,6 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   and the following is a good resource for the actual equation to implement (look at equation 
 	//   3.33
 	//   http://planning.cs.uiuc.edu/node99.html
-	
 
 	/* Beginning of the coordinate transformation which does rotation and translation via */
 	/* this gets us from particle coordinates to car's map coordinates 
@@ -242,13 +237,13 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	*/
 
 	// calculate normalization term
-	gauss_norm= (1./(2. * 3.141592653 * sig_x * sig_y));
+	gauss_norm = (1./(2. * 3.141592653 * sig_x * sig_y));
 
 	// calculate exponent
-	exponent= ( pow((x_obs - mu_x),2 ) )/(2. * pow(sig_x,2) ) + (pow((y_obs - mu_y),2 )/(2. * pow(sig_y,2)));
+	exponent = ( pow((x_obs - mu_x),2 ) )/(2. * pow(sig_x,2) ) + (pow((y_obs - mu_y),2 )/(2. * pow(sig_y,2)));
 
 	// calculate weight using normalization terms and exponent
-	double weight= gauss_norm * exp(-1 * exponent);
+	double weight = gauss_norm * exp(-1 * exponent);
 }
 
 void ParticleFilter::resample() {
@@ -256,6 +251,40 @@ void ParticleFilter::resample() {
 	// NOTE: You may find std::discrete_distribution helpful here.
 	//   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
 
+	//start with std::vector<Particle> particles and num_particles
+	vector<Particle>result;
+	//outer ring is a cumulative distribution function, cdf
+	double c[num_particles];
+	c[0] = particles[0].weight;
+
+	for( int k = 1; k < num_particles; k++){
+		//think of c's as what percentage around the clock have you gone?
+		c[k] = c[k-1] + particles[k].weight;
+	}
+
+	// make a random number between 0 and 1 / num_particles
+	random_device rd;
+	default_random_engine generator(rd()); // rd() provides a random seed
+	uniform_real_distribution<double> distribution(0.0, 1./num_particles);	
+	double u1 = distribution(generator);
+
+	double u[num_particles];
+	u[0] = u1;
+
+	int i = 0;
+	for( int j = 0; j < num_particles; j++){
+		//think of c's as what percentage around the clock have you gone?
+		while( u[j] > c[i] ){
+			i += 1;
+		}
+		// The line below is the link that this function based upon, question is, should we re-do particle's weight?
+		//https://classroom.udacity.com/courses/ud810/lessons/3353208568/concepts/33538586070923#
+		particles[i].weight = 1.0 / num_particles;
+		result.push_back( particles[i] );
+		u[j + 1] = u[j] + 1.0 / num_particles;
+	}
+
+	particles = result;
 }
 
 Particle ParticleFilter::SetAssociations(Particle& particle, const std::vector<int>& associations, 
