@@ -215,35 +215,69 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   http://planning.cs.uiuc.edu/node99.html
 
 	/* Beginning of the coordinate transformation which does rotation and translation via */
-	/* this gets us from particle coordinates to car's map coordinates 
-	    __								__	__ _
-	xm	|cos(theta)		-sin(theta)		xp| |xc |
-	ym	|sin(theta)		cos(theta)		yp| |yc |
-	1	|1				1				1 |	|1  |
-		--								--- -- --
-	*/	
-	/* End of the coordinate transformation */
-
-	/* Gauss Norm for weight update*/
-	double sig_x, sig_y, x_obs, y_obs, mu_x, mu_y, gauss_norm, exponent;
+	///////////////////////////////////////////////////////////////////////////////////////
+		for( int p_index = 0; p_index < particles.size(); p_index++){
 	
-	/*
-	sig_x= 0.3
-	sig_y= 0.3
-	x_obs= 6
-	y_obs= 3
-	mu_x= 5
-	mu_y= 3
-	*/
+	Particle p = particles[p_index];	
+	double particle_weight = 1.0;
+	
+	//observations
+	for ( int i=0; i < observations.size(); i++){
+		
+		double x_observe_c = observations[i].x;
+		double y_observe_c = observations[i].y;
 
-	// calculate normalization term
-	gauss_norm = (1./(2. * 3.141592653 * sig_x * sig_y));
+		double xm = p.x + cos(p.theta) * x_observe_c  + -1 * sin ( p.theta) * y_observe_c; 
+		double ym = p.y + sin(p.theta) * x_observe_c + cos(p.theta) * y_observe_c;
 
-	// calculate exponent
-	exponent = ( pow((x_obs - mu_x),2 ) )/(2. * pow(sig_x,2) ) + (pow((y_obs - mu_y),2 )/(2. * pow(sig_y,2)));
+		double minsize = 9999;
+		int id_curr = 9999;
+		for( int l=0; l < map_landmarks.landmark_list.size(); l++){
+			
+			double obs_to_lm = dist(map_landmarks.landmark_list[l].x_f, map_landmarks.landmark_list[l].y_f, xm, ym);
+			
+			if ( obs_to_lm < sensor_range && obs_to_lm < minsize ){
+				minsize = obs_to_lm;
+				id_curr = l;
+			}			
+		}
 
-	// calculate weight using normalization terms and exponent
-	double weight = gauss_norm * exp(-1 * exponent);
+		//cout << "Observation " << i << " " << x_observe_c << "," << y_observe_c << " most likely landmark " << landmarks[id_curr].id  << endl; 
+	
+		/* Gauss Norm for weight update*/
+		double sig_x = std_landmark[0]; 
+		double sig_y = std_landmark[1];
+		double x_obs = xm;
+		double y_obs = ym;
+		double mu_x = map_landmarks.landmark_list[id_curr].x_f;
+		double mu_y = map_landmarks.landmark_list[id_curr].y_f;
+
+		// calculate exponent
+		double exponent = ( pow((x_obs - mu_x),2 ) )/(2. * pow(sig_x,2) ) + (pow((y_obs - mu_y),2 )/(2. * pow(sig_y,2)));
+		
+		// calculate normalization term
+		double gauss_norm = (1./(2. * 3.141592653 * sig_x * sig_y));
+
+		// calculate weight using normalization terms and exponent
+		double weight_curr = gauss_norm * exp(-1 * exponent);
+		//cout<< i << " " << weight_curr << endl;
+		particle_weight = particle_weight * weight_curr;
+	}
+
+	particles[p_index].weight = particle_weight;	
+
+	}
+	/////////////////////////////////////////////////////////////    __								__	__ _
+	/*  Normalizing particles weights--> otherwise the resampling breaks (probably) */
+
+	double accumulator = 0.0;
+	for(int i=0;i< particles.size();i++){
+		accumulator += particles[i].weight;
+	}
+	for(int i=0;i< particles.size();i++){
+		particles[i].weight = particles[i].weight / accumulator;
+	}
+
 }
 
 void ParticleFilter::resample() {
@@ -298,6 +332,7 @@ Particle ParticleFilter::SetAssociations(Particle& particle, const std::vector<i
     particle.associations= associations;
     particle.sense_x = sense_x;
     particle.sense_y = sense_y;
+    return particle;
 }
 
 string ParticleFilter::getAssociations(Particle best)
