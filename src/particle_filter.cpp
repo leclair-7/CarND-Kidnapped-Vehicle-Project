@@ -17,7 +17,7 @@
 
 #include "particle_filter.h"
 
-#define EPSILON .001
+#define EPSILON .0001
 using namespace std;
 
 void ParticleFilter::init(double x, double y, double theta, double std[]) {
@@ -25,34 +25,42 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	//   x, y, theta and their uncertainties from GPS) and all weights to 1. 
 	// Add random Gaussian noise to each particle.
 	// NOTE: Consult particle_filter.h for more information about this method (and others in this file).
-	num_particles = 100;
-	std_vel = 1.0; 
-	std_yaw = 1.0;
-	double std_x, std_y, std_theta; // Standard deviations for x, y, and theta
-	// TODO: Set standard deviations for x, y, and theta
-	std_x = std[0];
-	std_y = std[1];
-	std_theta = std[2];
+	num_particles = 3;
+	debug = true;
 
-	normal_distribution<double> dist_x(x, std_x);
-	normal_distribution<double> dist_y(y, std_y);
-	normal_distribution<double> dist_theta(theta, std_theta);
+	if (debug == true)
+	{
+
+		Particle p;
+		for(int i=0; i < num_particles;i++){
+			p.id = i;
+			p.x = x;
+			p.y = y;
+			p.theta = theta;
+			p.weight = 1.0;
+			particles.push_back( p );
+		}
+
+		is_initialized = true;
+		return;
+	}
+	
+
+	normal_distribution<double> dist_x(x, std[0]);
+	normal_distribution<double> dist_y(y, std[1]);
+	normal_distribution<double> dist_theta(theta, std[2]);
 
 	default_random_engine gen;
+
 	Particle p;
 
 	for(int i=0; i < num_particles;i++)
 	{
-		double sample_x, sample_y, sample_theta;
-		sample_x = dist_x(gen);
-		sample_y = dist_y(gen);
-		sample_theta = dist_theta(gen);
-
 		p.id = i;
-		p.x = sample_x;
-		p.y = sample_y;
-		p.theta = sample_theta;
-		p.weight = 1;
+		p.x = dist_x(gen);
+		p.y = dist_y(gen);
+		p.theta = dist_theta(gen);
+		p.weight = 1.0;
 		particles.push_back( p );
 	}
 
@@ -80,91 +88,63 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	//  http://en.cppreference.com/w/cpp/numeric/random/normal_distribution
 	//  http://www.cplusplus.com/reference/random/default_random_engine/
 	
-	/*
-	cout<< "Pre-predict" << endl;
-	for(int i=0; i < 3;i++)
-	{
-		
-		cout<< i << "\t" << particles[i].id << endl;
-		cout<< i << "\t" << particles[i].x << endl;
-		cout<< i << "\t" << particles[i].y << endl;
-		cout<< i << "\t" << particles[i].theta << endl;
-		
-	}
-	*/
-
-	double v_over_theta;
-	double d_theta_dt;
 	double theta_0;
-	double xf, yf, thetaf;
+	double dx, dy, thetaf;		
 
-	/* Noise */
-	double std_x, std_y, std_theta; // Standard deviations for x, y, and theta
-	// TODO: Set standard deviations for x, y, and theta
-	std_x = std_pos[0];
-	std_y = std_pos[1];
-	std_theta = std_pos[2];	
+	if (debug == true){		
+
+		for(int i=0; i < num_particles; i++)
+		{
+			
+			theta_0  = particles[i].theta;			
+					
+			if ( yaw_rate < EPSILON )
+			{
+				dx     = velocity * delta_t * cos(theta_0);
+				dy     = velocity * delta_t * sin(theta_0);			
+			} else{
+				
+				dx  = (velocity / yaw_rate) * (sin(theta_0 + yaw_rate * delta_t) - sin( theta_0 )); 
+				dy  = (velocity / yaw_rate) * (cos(theta_0 )             - cos( theta_0 + yaw_rate * delta_t )); 
+			}
+			particles[i].x     += dx;
+			particles[i].y     += dy;
+			particles[i].theta += yaw_rate * delta_t;
+		}
+		return;
+	}
+
 	default_random_engine gen;
 
-	normal_distribution <double> dist_velocity(velocity, std_vel);
-	normal_distribution <double> dist_yawd(yaw_rate, std_yaw);	
-	
 	for(int i=0; i < num_particles; i++)
 	{
-		//add noise to velocity and yaw_rate, comment the next 2 lines down to make it noiseless
-		velocity = dist_velocity(gen); 
-		yaw_rate = dist_yawd(gen);
-
-		double x = particles[i].x;
-		double y = particles[i].y;
 		theta_0  = particles[i].theta;
 		
-		normal_distribution<double> dist_x(x, std_x);	
-		normal_distribution<double> dist_y(y, std_y);
-		normal_distribution<double> dist_theta(theta_0, std_theta);
+		normal_distribution<double> dist_x(0, std_pos[0]);	
+		normal_distribution<double> dist_y(0, std_pos[1]);
+		normal_distribution<double> dist_theta(0, std_pos[2]);
 
-		x  		= dist_x(gen);
-		y 		= dist_y(gen);
-		theta_0 = dist_theta(gen);
+		double x_noise  	 = dist_x(gen);
+		double y_noise 		 = dist_y(gen);
+		double theta_0_noise = dist_theta(gen);
 		
 		if ( theta_0 < EPSILON )
 		{
-			xf     = x + velocity * delta_t * cos(theta_0);
-			yf     = y + velocity * delta_t * sin(theta_0);
-			thetaf = theta_0;
+			dx     = velocity * delta_t * cos(theta_0);
+			dy     = velocity * delta_t * sin(theta_0);	
 
 		} else{
-
-			d_theta_dt   = yaw_rate * delta_t;
-			v_over_theta = velocity / yaw_rate;
-
-			xf     = x + v_over_theta * (sin(theta_0 + d_theta_dt) - sin( theta_0 )); 
-			yf     = y + v_over_theta * (cos(theta_0 )             - cos( theta_0 + d_theta_dt )); 
-			thetaf = theta_0 + v_over_theta;
+			
+			dx     = (velocity / yaw_rate) * (sin(theta_0 + yaw_rate * delta_t) - sin( theta_0 )); 
+			dy     = (velocity / yaw_rate) * (cos(theta_0 )             - cos( theta_0 + yaw_rate * delta_t )); 
 
 		}
-
-		particles[i].x     = xf;
-		particles[i].y     = yf;
-		particles[i].theta = thetaf;
-
+		particles[i].x     += (dx + x_noise);
+		particles[i].y     += (dy + y_noise);
+		particles[i].theta += ( yaw_rate * delta_t + theta_0_noise);
 	}
 
-	/*
-	cout<< "Post Predict" << endl;
-	for(int i=0; i < 3;i++)
-	{
-		
-		cout<< i << "\t" << particles[i].id << endl;
-		cout<< i << "\t" << particles[i].x << endl;
-		cout<< i << "\t" << particles[i].y << endl;
-		cout<< i << "\t" << particles[i].theta << endl;
-		
-	}
-	 string frog;
-	 cout<< "Got to the frog line\n";
-	 cin >> frog;
-	 */
+
 }
 
 void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations) {
@@ -210,66 +190,68 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   Keep in mind that this transformation requires both rotation AND translation (but no scaling).
 	//   The following is a good resource for the theory:
 	//   https://www.willamette.edu/~gorr/classes/GeneralGraphics/Transforms/transforms2d.htm
-	//   and the following is a good resource for the actual equation to implement (look at equation 
-	//   3.33
+	//   and the following is a good resource for the actual equation to implement (look at equation 3.33
 	//   http://planning.cs.uiuc.edu/node99.html
-
 	/* Beginning of the coordinate transformation which does rotation and translation via */
-	///////////////////////////////////////////////////////////////////////////////////////
-		for( int p_index = 0; p_index < particles.size(); p_index++){
 	
-	Particle p = particles[p_index];	
-	double particle_weight = 1.0;
+	if (debug == true){
+		return;
+	}
+	for( int p_index = 0; p_index < particles.size(); p_index++){
 	
-	//observations
-	for ( int i=0; i < observations.size(); i++){
+		Particle p = particles[p_index];	
+		double particle_weight = 1.0;
 		
-		double x_observe_c = observations[i].x;
-		double y_observe_c = observations[i].y;
-
-		double xm = p.x + cos(p.theta) * x_observe_c  + -1 * sin ( p.theta) * y_observe_c; 
-		double ym = p.y + sin(p.theta) * x_observe_c + cos(p.theta) * y_observe_c;
-
-		double minsize = 9999;
-		int id_curr = 9999;
-		for( int l=0; l < map_landmarks.landmark_list.size(); l++){
+		
+		for ( int i=0; i < observations.size(); i++){
 			
-			double obs_to_lm = dist(map_landmarks.landmark_list[l].x_f, map_landmarks.landmark_list[l].y_f, xm, ym);
+			double x_observe_c = observations[i].x;
+			double y_observe_c = observations[i].y;
+
+			double xm = p.x + cos(p.theta) * x_observe_c  + -1 * sin ( p.theta) * y_observe_c; 
+			double ym = p.y + sin(p.theta) * x_observe_c + cos(p.theta) * y_observe_c;
+
 			
-			if ( obs_to_lm < sensor_range && obs_to_lm < minsize ){
-				minsize = obs_to_lm;
-				id_curr = l;
-			}			
+			double minsize = 9999;
+			int id_curr = 9999;
+			for( int l=0; l < map_landmarks.landmark_list.size(); l++){
+				
+				double obs_to_lm = dist(xm, ym, map_landmarks.landmark_list[l].x_f, map_landmarks.landmark_list[l].y_f);
+				
+				if ( obs_to_lm < sensor_range && obs_to_lm < minsize ){
+					minsize = obs_to_lm;
+					id_curr = l;
+				}			
+			} 
+
+			if (minsize == 9999 || id_curr == 9999){		
+				continue; 
+			}
+			
+			double sig_x = std_landmark[0]; 
+			double sig_y = std_landmark[1];
+			double x_obs = xm;
+			double y_obs = ym;
+			double mu_x = map_landmarks.landmark_list[id_curr].x_f;
+			double mu_y = map_landmarks.landmark_list[id_curr].y_f;
+
+			// calculate exponent
+			double exponent = (pow((x_obs - mu_x),2 ) ) / (2. * pow(sig_x,2) ) + pow((y_obs - mu_y),2 ) / (2. * pow(sig_y,2));
+			
+			// calculate normalization term
+			double gauss_norm = (1./(2. * M_PI * sig_x * sig_y));
+
+			// calculate weight using normalization terms and exponent
+			double weight_curr = gauss_norm * exp(-1 * exponent);
+			//cout<< i << " " << weight_curr << endl;
+			particle_weight = particle_weight * weight_curr;
 		}
+		particles[p_index].weight = particle_weight;
+		cout << "Particle weight " << particle_weight << endl;
+	}
 
-		//cout << "Observation " << i << " " << x_observe_c << "," << y_observe_c << " most likely landmark " << landmarks[id_curr].id  << endl; 
+	// Normalizing particles weights--> otherwise the resampling breaks (probably) 
 	
-		/* Gauss Norm for weight update*/
-		double sig_x = std_landmark[0]; 
-		double sig_y = std_landmark[1];
-		double x_obs = xm;
-		double y_obs = ym;
-		double mu_x = map_landmarks.landmark_list[id_curr].x_f;
-		double mu_y = map_landmarks.landmark_list[id_curr].y_f;
-
-		// calculate exponent
-		double exponent = ( pow((x_obs - mu_x),2 ) )/(2. * pow(sig_x,2) ) + (pow((y_obs - mu_y),2 )/(2. * pow(sig_y,2)));
-		
-		// calculate normalization term
-		double gauss_norm = (1./(2. * 3.141592653 * sig_x * sig_y));
-
-		// calculate weight using normalization terms and exponent
-		double weight_curr = gauss_norm * exp(-1 * exponent);
-		//cout<< i << " " << weight_curr << endl;
-		particle_weight = particle_weight * weight_curr;
-	}
-
-	particles[p_index].weight = particle_weight;	
-
-	}
-	/////////////////////////////////////////////////////////////    __								__	__ _
-	/*  Normalizing particles weights--> otherwise the resampling breaks (probably) */
-
 	double accumulator = 0.0;
 	for(int i=0;i< particles.size();i++){
 		accumulator += particles[i].weight;
@@ -277,6 +259,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	for(int i=0;i< particles.size();i++){
 		particles[i].weight = particles[i].weight / accumulator;
 	}
+	
+	
 
 }
 
@@ -286,6 +270,10 @@ void ParticleFilter::resample() {
 	//   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
 
 	//start with std::vector<Particle> particles and num_particles
+	if (debug == true){
+		return;
+	}
+
 	vector<Particle>result;
 	//outer ring is a cumulative distribution function, cdf
 	double c[num_particles];
@@ -306,7 +294,7 @@ void ParticleFilter::resample() {
 	u[0] = u1;
 
 	int i = 0;
-	for( int j = 0; j < num_particles; j++){
+	for( int j = 0; j < num_particles-1; j++){
 		//think of c's as what percentage around the clock have you gone?
 		while( u[j] > c[i] ){
 			i += 1;
@@ -319,6 +307,7 @@ void ParticleFilter::resample() {
 	}
 
 	particles = result;
+	//cout<< particles.size() << endl;
 }
 
 Particle ParticleFilter::SetAssociations(Particle& particle, const std::vector<int>& associations, 

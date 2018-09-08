@@ -34,7 +34,7 @@ class ParticleFilter {
 	double std_yaw;	
 	// Flag, if filter is initialized
 	bool is_initialized;
-	
+	bool debug;
 	// Vector of weights of all particles
 	std::vector<double> weights;
 	
