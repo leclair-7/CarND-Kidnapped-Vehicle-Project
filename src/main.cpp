@@ -45,8 +45,10 @@ int main()
 
   // Create particle filter
   ParticleFilter pf;
+  //cout << "Before on message" << endl;
+  h.onMessage([&pf,&map,&delta_t,&sensor_range,&sigma_pos,&sigma_landmark](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {  
+  //cout << "After on message sort of" << endl;
 
-  h.onMessage([&pf,&map,&delta_t,&sensor_range,&sigma_pos,&sigma_landmark](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
@@ -73,10 +75,14 @@ int main()
 			double sense_theta = std::stod(j[1]["sense_theta"].get<std::string>());
 
 			pf.init(sense_x, sense_y, sense_theta, sigma_pos);
+
+      
 		  }
 		  else {
+        //cout << "After on message moooree " << endl;
+
 			// Predict the vehicle's next state from previous (noiseless control) data.
-		  	double previous_velocity = std::stod(j[1]["previous_velocity"].get<std::string>());
+		  double previous_velocity = std::stod(j[1]["previous_velocity"].get<std::string>());
 			double previous_yawrate = std::stod(j[1]["previous_yawrate"].get<std::string>());
 
 			pf.prediction(delta_t, sigma_pos, previous_velocity, previous_yawrate);
@@ -121,7 +127,7 @@ int main()
 		  Particle best_particle;
 		  double weight_sum = 0.0;
 		  for (int i = 0; i < num_particles; ++i) {
-			if (particles[i].weight > highest_weight) {
+			if (particles[i].weight >= highest_weight) {
 				highest_weight = particles[i].weight;
 				best_particle = particles[i];
 			}
@@ -129,11 +135,17 @@ int main()
 		  }
 		  cout << "highest w " << highest_weight << endl;
 		  cout << "average w " << weight_sum/num_particles << endl;
-
+      
           json msgJson;
+          
           msgJson["best_particle_x"] = best_particle.x;
           msgJson["best_particle_y"] = best_particle.y;
           msgJson["best_particle_theta"] = best_particle.theta;
+
+          //cout<< pf.particles.size() << " highest weight: " << highest_weight << endl;
+          cout<< "best_particle.x" << best_particle.x << endl;
+          cout<< "best_particle.y" << best_particle.y << endl;
+          cout<< "best_particle.theta" << best_particle.theta << endl;
 
           //Optional message data used for debugging particle's sensing and associations
           msgJson["best_particle_associations"] = pf.getAssociations(best_particle);
@@ -142,8 +154,9 @@ int main()
 
           auto msg = "42[\"best_particle\"," + msgJson.dump() + "]";
           // std::cout << msg << std::endl;
+
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
-	  
+	         
         }
       } else {
         std::string msg = "42[\"manual\",{}]";

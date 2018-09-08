@@ -38,7 +38,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	if (debug){
 		num_particles = 1;
 	} else {
-		num_particles = 100;
+		num_particles = 1000;
 	}
 
 	if (debug == true)
@@ -99,9 +99,10 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	// NOTE: When adding noise you may find std::normal_distribution and std::default_random_engine useful.
 	//  http://en.cppreference.com/w/cpp/numeric/random/normal_distribution
 	//  http://www.cplusplus.com/reference/random/default_random_engine/
+//	cout << "Beginning of prediction" << endl;
 	
 	double theta_0;
-	double dx, dy, thetaf;		
+	double dx, dy;		
 
 	if (debug == true){		
 
@@ -140,7 +141,8 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 		double y_noise 		 = dist_y(gen);
 		double theta_0_noise = dist_theta(gen);
 		
-		if ( theta_0 < EPSILON )
+		
+		if ( yaw_rate < EPSILON )
 		{
 			dx     = velocity * delta_t * cos(theta_0);
 			dy     = velocity * delta_t * sin(theta_0);	
@@ -154,9 +156,11 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 		particles[i].x     += (dx + x_noise);
 		particles[i].y     += (dy + y_noise);
 		particles[i].theta += ( yaw_rate * delta_t + theta_0_noise);
+		
 	}
 
-
+//	cout << "End of updateWeights" << endl;
+	
 }
 
 void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations) {
@@ -205,10 +209,14 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   and the following is a good resource for the actual equation to implement (look at equation 3.33
 	//   http://planning.cs.uiuc.edu/node99.html
 	/* Beginning of the coordinate transformation which does rotation and translation via */
+
+	//cout << "Beginning of updateWeights" << endl;
 	
 	if (debug == true){
 		return;
 	}
+
+
 	for( int p_index = 0; p_index < particles.size(); p_index++){
 	
 		Particle p = particles[p_index];	
@@ -257,11 +265,12 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 
 			// calculate weight using normalization terms and exponent
 			double weight_curr = gauss_norm * exp(-1 * exponent);
+			//cout << "weight_curr " << weight_curr << endl;
 			//cout<< i << " " << weight_curr << endl;
 			particle_weight = particle_weight * weight_curr;
 		}
 		particles[p_index].weight = particle_weight;
-		cout << "Particle weight " << particle_weight << endl;
+		//cout << "Particle weight " << particle_weight << endl;
 	}
 
 	// Normalizing particles weights--> otherwise the resampling breaks (probably) 
@@ -271,19 +280,24 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 		accumulator += particles[i].weight;
 	}
 	for(int i=0;i< particles.size();i++){
-		particles[i].weight = particles[i].weight / accumulator;
-	}
-	
-	
+		if (accumulator < .00000001){
+			particles[i].weight = particles[i].weight /.00000001;
+		} else {
 
+		particles[i].weight = particles[i].weight / accumulator;
+		}
+	}	
+
+	//cout << "End of updateWeights" << endl;
+	
 }
 
 void ParticleFilter::resample() {
 	// TODO: Resample particles with replacement with probability proportional to their weight. 
 	// NOTE: You may find std::discrete_distribution helpful here.
 	//   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
-
-	//start with std::vector<Particle> particles and num_particles
+//cout << "Beginning of resample" << endl;
+	
 	if (debug == true){
 		return;
 	}
@@ -304,11 +318,11 @@ void ParticleFilter::resample() {
 	uniform_real_distribution<double> distribution(0.0, 1./num_particles);	
 	double u1 = distribution(generator);
 
-	double u[num_particles];
+	double u[num_particles + 1];
 	u[0] = u1;
 
 	int i = 0;
-	for( int j = 0; j < num_particles-1; j++){
+	for( int j = 0; j < num_particles; j++){
 		//think of c's as what percentage around the clock have you gone?
 		while( u[j] > c[i] ){
 			i += 1;
@@ -322,6 +336,8 @@ void ParticleFilter::resample() {
 
 	particles = result;
 	//cout<< particles.size() << endl;
+//	cout << "End of resample" << endl;
+	
 }
 
 Particle ParticleFilter::SetAssociations(Particle& particle, const std::vector<int>& associations, 
