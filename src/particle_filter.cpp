@@ -25,8 +25,21 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	//   x, y, theta and their uncertainties from GPS) and all weights to 1. 
 	// Add random Gaussian noise to each particle.
 	// NOTE: Consult particle_filter.h for more information about this method (and others in this file).
-	num_particles = 3;
-	debug = true;
+
+	/*
+ 	In debug mode: init just sets all particle positions to the GPS information (x, y, theta) 
+ 	exactly with no noise added and sets the first weight to 1 and the rest to 0; predict in this
+ 	mode does not add any noise but performs the motion update; updateWeights and resample return
+ 	immediately.
+ 	*/
+
+	debug = false;
+
+	if (debug){
+		num_particles = 1;
+	} else {
+		num_particles = 100;
+	}
 
 	if (debug == true)
 	{
@@ -44,7 +57,6 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 		is_initialized = true;
 		return;
 	}
-	
 
 	normal_distribution<double> dist_x(x, std[0]);
 	normal_distribution<double> dist_y(y, std[1]);
@@ -154,30 +166,30 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 	//   implement this method and use it as a helper during the updateWeights phase.
 
 	/*
-		Still don't know what exactly this association does, however, 
-			it does associate what the particle thinks it sees with what it observes,
-			if we do that with all particles, that would n^3 runtime.. baaad..
+		Remember, observation means we saw a landmark,
+		setting association, sets each observation's id to closest measurement 
 	*/
 	double currdist;
-	int id_pred;
+	int id_pred_on_map;
+	double mindist;
 	
-	for ( int i = 0; i < predicted.size(); i++){
-		double mindist = 999.0;
+	for ( int i = 0; i < observations.size(); i++){
 		
-		for ( int j=0; j < observations.size(); j++){
-			currdist = dist(observations[j].x, observations[j].y, predicted[i].x, predicted[i].y);
+		double mindist = std::numeric_limits<double>::max(); 
+		id_pred_on_map = -1;
+
+		for ( int j=0; j < predicted.size(); j++){
+
+			currdist = dist(predicted[j].x, predicted[j].y, observations[i].x, observations[i].y);
+			
 			if ( currdist < mindist){
 				mindist = currdist;
-				id_pred = i;
+				id_pred_on_map = predicted[j].id;
 			}
 		}
 
-		/*
-		//Notice the association made in the printline, may put that in some sort of map soon
-
-		cout<< "The closest to: " << predicted[i].id << " " << predicted[i].x << " " << predicted[i].y  << " is "
-								  << observations[id_pred].id << " " << observations[id_pred].x << " " << observations[id_pred].y << endl; 
-		*/
+		observations[i].id = id_pred_on_map;
+		
 	}
 }
 
@@ -234,6 +246,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 			double y_obs = ym;
 			double mu_x = map_landmarks.landmark_list[id_curr].x_f;
 			double mu_y = map_landmarks.landmark_list[id_curr].y_f;
+
+			//dataAssociation( PREDICTED_LANDMARKS, observations[i] );
 
 			// calculate exponent
 			double exponent = (pow((x_obs - mu_x),2 ) ) / (2. * pow(sig_x,2) ) + pow((y_obs - mu_y),2 ) / (2. * pow(sig_y,2));
