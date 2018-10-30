@@ -1,7 +1,7 @@
 ## Overview
 This repository contains the solution to the final project for the Localization course in Udacity's Self-Driving Car Nanodegree.
 
-## Projet Prompt / Purpose
+## Project Prompt / Purpose
 Your robot has been kidnapped and transported to a new location! Luckily it has a map of this location, a (noisy) GPS estimate of its initial location, and lots of (noisy) sensor and control data.
 
 This repo is an implementation of a 2 dimensional particle filter in C++. The particle filter is given a map and some initial localization information (analogous to what a GPS would provide). At each time step the filter gets observation and control data.

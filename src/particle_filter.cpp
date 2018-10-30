@@ -296,7 +296,7 @@ void ParticleFilter::resample() {
 	// TODO: Resample particles with replacement with probability proportional to their weight. 
 	// NOTE: You may find std::discrete_distribution helpful here.
 	//   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
-//cout << "Beginning of resample" << endl;
+	//cout << "Beginning of resample" << endl;
 	
 	if (debug == true){
 		return;
